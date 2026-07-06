@@ -1,3 +1,4 @@
+#include <SDL2/SDL.h>
 #include "raylib.h"
 #include <stdbool.h>
 #include <stdio.h> // NEW: Required for file save/load operations
