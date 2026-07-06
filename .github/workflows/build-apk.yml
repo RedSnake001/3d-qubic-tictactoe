@@ -1,0 +1,59 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Download NDK & Build Tools
+      run: |
+        sdkmanager --install "ndk;25.2.9519653" "build-tools;33.0.2" "platforms;android-33"
+
+    - name: Get Raylib Android Template Source
+      run: |
+        git clone --depth 1 https://github.com/raysan5/raylib.git
+        mkdir -p app-build/app/src/main/cpp
+        mkdir -p app-build/app/src/main/jniLibs/arm64-v8a
+        
+        # Pull template files from Raylib source
+        cp -r raylib/projects/CMake/Android/. app-build/
+        cp main.c app-build/app/src/main/cpp/native_app.c
+
+    - name: Cross-Compile Raylib Static Library
+      run: |
+        cd raylib/src
+        make PLATFORM=PLATFORM_ANDROID ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653 ANDROID_ARCH=arm64-v8a
+
+    - name: Link Game Native Binary
+      run: |
+        export NDK_CC=$ANDROID_HOME/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang
+        $NDK_CC -o app-build/app/src/main/jniLibs/arm64-v8a/libgame.so main.c -shared -I./raylib/src -L./raylib/src -lraylib -lGLESv2 -lEGL -landroid -llog
+
+    - name: Assemble Final APK
+      run: |
+        cd app-build
+        chmod +x gradlew
+        ./gradlew assembleDebug
+
+    - name: Upload Generated APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: 3dQubic-Android-APK
+        path: app-build/app/build/outputs/apk/debug/app-debug.apk
