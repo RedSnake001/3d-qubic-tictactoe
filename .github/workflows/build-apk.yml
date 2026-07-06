@@ -1,3 +1,5 @@
+name: Build Android APK
+
 on:
   push:
     branches: [ main, master ]
@@ -52,14 +54,18 @@ jobs:
         # Write Android Gradle config
         cat << 'EOF' > app-build/build.gradle
         buildscript {
-            repositories { google() }
-            dependencies { bloodshed "com.android.tools.build:gradle:8.1.0" }
+            repositories { google(); mavenCentral() }
+            dependencies { classpath "com.android.tools.build:gradle:8.1.0" }
+        }
+        allprojects {
+            repositories { google(); mavenCentral() }
         }
         EOF
 
         cat << 'EOF' > app-build/app/build.gradle
         plugins { id 'com.android.application' }
         android {
+            namespace 'com.qubic.game'
             compileSdk 33
             defaultConfig {
                 applicationId 'com.qubic.game'
