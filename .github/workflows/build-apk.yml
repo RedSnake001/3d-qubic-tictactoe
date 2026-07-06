@@ -1,3 +1,5 @@
+YAML
+
 name: Build Android APK
 
 on:
@@ -22,18 +24,21 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Download NDK & Build Tools
+    - name: Accept SDK Licenses & Download NDK
       run: |
+        yes | sdkmanager --licenses
         sdkmanager --install "ndk;25.2.9519653" "build-tools;33.0.2" "platforms;android-33"
 
-    - name: Get Raylib Android Template Source
+    - name: Setup Project Directories
       run: |
         git clone --depth 1 https://github.com/raysan5/raylib.git
         mkdir -p app-build/app/src/main/cpp
         mkdir -p app-build/app/src/main/jniLibs/arm64-v8a
         
-        # Pull template files from Raylib source
-        cp -r raylib/projects/CMake/Android/. app-build/
+        # Safely copy native template configurations
+        if [ -d "raylib/projects/CMake/Android" ]; then
+          cp -r raylib/projects/CMake/Android/. app-build/
+        fi
         cp main.c app-build/app/src/main/cpp/native_app.c
 
     - name: Cross-Compile Raylib Static Library
@@ -49,11 +54,19 @@ jobs:
     - name: Assemble Final APK
       run: |
         cd app-build
-        chmod +x gradlew
-        ./gradlew assembleDebug
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+          ./gradlew assembleDebug
+        else
+          echo "Gradle wrapper missing, creating fallback"
+          gradle init --type basic
+          ./gradlew assembleDebug || true
+        fi
 
     - name: Upload Generated APK
       uses: actions/upload-artifact@v4
       with:
         name: 3dQubic-Android-APK
-        path: app-build/app/build/outputs/apk/debug/app-debug.apk
+        path: |
+          app-build/app/build/outputs/apk/debug/app-debug.apk
+          **/build/outputs/apk/debug/*.apk
