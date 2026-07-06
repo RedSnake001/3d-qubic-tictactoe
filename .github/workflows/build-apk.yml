@@ -1,5 +1,3 @@
-name: Build Android APK
-
 on:
   push:
     branches: [ main, master ]
@@ -31,25 +29,64 @@ jobs:
       run: |
         git clone --depth 1 https://github.com/raysan5/raylib.git
 
-    - name: Cross-Compile Raylib Static Library
+    - name: Generate Unified Project Layout
       run: |
-        cd raylib/src
-        make PLATFORM=PLATFORM_ANDROID ANDROID_NDK=$ANDROID_HOME/ndk/25.2.9519653 ANDROID_ARCH=arm64
+        mkdir -p app-build/app/src/main/cpp
+        mkdir -p app-build/app/src/main/jniLibs/arm64-v8a
+        
+        # Write basic CMake configuration
+        cat << 'EOF' > app-build/app/src/main/cpp/CMakeLists.txt
+        cmake_minimum_required(VERSION 3.22.1)
+        project(3dQubic)
+        
+        add_library(raylib STATIC ../../../../../raylib/src/rcore.c ../../../../../raylib/src/rshapes.c ../../../../../raylib/src/rtextures.c ../../../../../raylib/src/rtext.c ../../../../../raylib/src/rmodels.c ../../../../../raylib/src/raudio.c ../../../../../raylib/src/utils.c)
+        target_compile_definitions(raylib PRIVATE PLATFORM_ANDROID)
+        target_include_directories(raylib PRIVATE ../../../../../raylib/src)
+        
+        add_library(game SHARED ../../../../../main.c)
+        target_compile_definitions(game PRIVATE PLATFORM_ANDROID)
+        target_include_directories(game PRIVATE ../../../../../raylib/src)
+        target_link_libraries(game raylib GLESv2 EGL android log)
+        EOF
 
-    - name: Build Standalone Game Binary
-      run: |
-        mkdir -p app-build/jniLibs/arm64-v8a
-        export NDK_CC=$ANDROID_HOME/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang
-        $NDK_CC -o app-build/jniLibs/arm64-v8a/libgame.so main.c -shared -I./raylib/src -L./raylib/src -lraylib -lGLESv2 -lEGL -landroid -llog
+        # Write Android Gradle config
+        cat << 'EOF' > app-build/build.gradle
+        buildscript {
+            repositories { google() }
+            dependencies { bloodshed "com.android.tools.build:gradle:8.1.0" }
+        }
+        EOF
 
-    - name: Package Minimal APK Layout
+        cat << 'EOF' > app-build/app/build.gradle
+        plugins { id 'com.android.application' }
+        android {
+            compileSdk 33
+            defaultConfig {
+                applicationId 'com.qubic.game'
+                minSdk 24
+                targetSdk 33
+                versionCode 1
+                versionName '1.0'
+            }
+            externalNativeBuild {
+                cmake {
+                    path "src/main/cpp/CMakeLists.txt"
+                    version "3.22.1"
+                }
+            }
+        }
+        EOF
+
+        # Create basic Android Manifest
+        echo "<manifest xmlns:android='http://schemas.android.com/apk/res/android' package='com.qubic.game'><application android:label='3dQubic' android:hasCode='false'><activity android:name='android.app.NativeActivity' android:exported='true'><meta-data android:name='android.app.lib_name' android:value='game'/><intent-filter><action android:name='android.intent.action.MAIN'/><category android:name='android.intent.category.LAUNCHER'/></intent-filter></activity></application></manifest>" > app-build/app/src/main/AndroidManifest.xml
+        
+        # Initialize Android wrapper wrapper
+        cd app-build
+        gradle init --type basic --dsl groovy --incubating
+
+    - name: Assemble Final APK
       run: |
         cd app-build
-        echo "plugins { id 'com.android.application' }" > build.gradle
-        echo "android { compileSdk 33; defaultConfig { applicationId 'com.qubic.game'; minSdk 24; targetSdk 33; versionCode 1; versionName '1.0' } }" >> build.gradle
-        mkdir -p src/main
-        echo "<manifest xmlns:android='http://schemas.android.com/apk/res/android' package='com.qubic.game'><application android:label='3dQubic' android:hasCode='false'><activity android:name='android.app.NativeActivity' android:exported='true'><meta-data android:name='android.app.lib_name' android:value='game'/><intent-filter><action android:name='android.intent.action.MAIN'/><category android:name='android.intent.category.LAUNCHER'/></intent-filter></activity></application></manifest>" > src/main/AndroidManifest.xml
-        gradle init --type basic --dsl groovy --incubating
         gradle assembleDebug || true
 
     - name: Upload Generated APK
@@ -57,5 +94,5 @@ jobs:
       with:
         name: 3dQubic-Android-APK
         path: |
-          app-build/build/outputs/apk/debug/*.apk
+          app-build/app/build/outputs/apk/debug/*.apk
           **/*.apk
