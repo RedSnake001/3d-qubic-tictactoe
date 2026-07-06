@@ -1,5 +1,3 @@
-YAML
-
 name: Build Android APK
 
 on:
@@ -34,11 +32,7 @@ jobs:
         git clone --depth 1 https://github.com/raysan5/raylib.git
         mkdir -p app-build/app/src/main/cpp
         mkdir -p app-build/app/src/main/jniLibs/arm64-v8a
-        
-        # Safely copy native template configurations
-        if [ -d "raylib/projects/CMake/Android" ]; then
-          cp -r raylib/projects/CMake/Android/. app-build/
-        fi
+        cp -r raylib/projects/CMake/Android/. app-build/
         cp main.c app-build/app/src/main/cpp/native_app.c
 
     - name: Cross-Compile Raylib Static Library
@@ -54,14 +48,8 @@ jobs:
     - name: Assemble Final APK
       run: |
         cd app-build
-        if [ -f "gradlew" ]; then
-          chmod +x gradlew
-          ./gradlew assembleDebug
-        else
-          echo "Gradle wrapper missing, creating fallback"
-          gradle init --type basic
-          ./gradlew assembleDebug || true
-        fi
+        chmod +x gradlew
+        ./gradlew assembleDebug
 
     - name: Upload Generated APK
       uses: actions/upload-artifact@v4
