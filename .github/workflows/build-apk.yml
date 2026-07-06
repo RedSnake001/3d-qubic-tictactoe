@@ -86,9 +86,9 @@ jobs:
         # Create basic Android Manifest
         echo "<manifest xmlns:android='http://schemas.android.com/apk/res/android' package='com.qubic.game'><application android:label='3dQubic' android:hasCode='false'><activity android:name='android.app.NativeActivity' android:exported='true'><meta-data android:name='android.app.lib_name' android:value='game'/><intent-filter><action android:name='android.intent.action.MAIN'/><category android:name='android.intent.category.LAUNCHER'/></intent-filter></activity></application></manifest>" > app-build/app/src/main/AndroidManifest.xml
         
-        # Initialize Android wrapper wrapper
+        # Initialize Android wrapper layout with overwrite allowed
         cd app-build
-        gradle init --type basic --dsl groovy --incubating
+        gradle init --type basic --dsl groovy --incubating --overwrite
 
     - name: Assemble Final APK
       run: |
