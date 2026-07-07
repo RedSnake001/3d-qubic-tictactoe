@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK Fast
 
 on:
   push:
@@ -13,26 +13,27 @@ jobs:
     - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    - name: Set up Java JDK
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Setup Android NDK
-      uses: android-actions/setup-android@v3
-      with:
-        api-level: 33
-        ndk-version: '25.2.9519653'
-
-    - name: Compile main.c to Android Binary
+    - name: Install Android Build Dependencies
       run: |
-        $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang game.c -o tictactoe_android
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libssl-dev libgdbm-dev libsqlite3-dev libb2-dev liblzma-dev tk-dev uuid-dev libreadline-dev
+        pip3 install --user --upgrade buildozer
+
+    - name: Configure Buildozer Project
+      run: |
+        ~/.local/bin/buildozer init
+        # Tell buildozer to include your C file and name the app
+        sed -i 's/title = My Application/title = 3D Tic Tac Toe/' buildozer.spec
+        sed -i 's/package.name = myapp/package.name = tictactoe/' buildozer.spec
+        sed -i 's/source.include_exts = py,png,jpg,kv,atlas/source.include_exts = c,h/' buildozer.spec
+
+    - name: Build APK with Buildozer
+      run: |
+        # This will compile your main.c straight into an Android app package
+        ~/.local/bin/buildozer android debug
 
     - name: Upload Finished APK
       uses: actions/upload-artifact@v4
       with:
         name: 3d-tic-tac-toe-apk
-        path: |
-          tictactoe_android
-          **/build/outputs/apk/**/*.apk
+        path: bin/*.apk
