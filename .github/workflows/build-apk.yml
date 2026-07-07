@@ -1,4 +1,4 @@
-name: Build Android APK Direct with SDL2
+name: Build Android APK Direct
 
 on:
   push:
@@ -19,22 +19,25 @@ jobs:
         api-level: 33
         ndk-version: '25.2.9519653'
 
-    - name: Download and Extract SDL2
+    - name: Prepare SDL2 Headers
       run: |
-        # Download the official SDL2 source files so the compiler can read them
+        # Download and extract SDL2
         wget https://github.com/libsdl-org/SDL/releases/download/release-2.30.11/SDL2-2.30.11.tar.gz
         tar -xzf SDL2-2.30.11.tar.gz
-        mv SDL2-2.30.11 sdl2_source
+        # Move headers into a folder named 'SDL2' so <SDL2/SDL.h> works
+        mkdir -p SDL2
+        cp SDL2-2.30.11/include/* SDL2/
 
-    - name: Compile main.c for Android with SDL2
+    - name: Compile main.c for Android
       run: |
-        # -I points the compiler directly to the SDL2 folders it needs
+        # -I. tells the compiler to look in the current folder for the 'SDL2' directory
         $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang \
-          -I./sdl2_source/include \
+          -I. \
           main.c -o tictactoe_android -llog
 
     - name: Package into APK
       run: |
+        # Create standard Android directory structure
         mkdir -p app/lib/arm64-v8a
         cp tictactoe_android app/lib/arm64-v8a/libmain.so
         cd app
