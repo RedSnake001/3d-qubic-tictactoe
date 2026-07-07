@@ -34,8 +34,10 @@ jobs:
 
     - name: Compile main.c for Android
       run: |
-        # Use -I. to find SDL2/SDL.h and raylib.h in the current directory
+        # -DSDL_MAIN_HANDLED: Prevents SDL2 from overriding your main() function
+        # -I.: Tells the compiler to look in the current directory for headers
         $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang \
+          -DSDL_MAIN_HANDLED \
           -I. \
           main.c -o tictactoe_android -llog
 
