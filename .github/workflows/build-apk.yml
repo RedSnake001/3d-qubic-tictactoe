@@ -25,7 +25,7 @@ jobs:
         api-level: 33
         ndk-version: '25.2.9519653'
 
-    - name: Compile game.c to Android Binary
+    - name: Compile main.c to Android Binary
       run: |
         $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang game.c -o tictactoe_android
 
