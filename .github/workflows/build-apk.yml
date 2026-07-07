@@ -1,4 +1,4 @@
-name: Build Android APK Fast
+name: Build Android APK Direct
 
 on:
   push:
@@ -13,27 +13,26 @@ jobs:
     - name: Checkout Source Code
       uses: actions/checkout@v4
 
-    - name: Install Android Build Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libssl-dev libgdbm-dev libsqlite3-dev libb2-dev liblzma-dev tk-dev uuid-dev libreadline-dev
-        pip3 install --user --upgrade buildozer
+    - name: Setup Android NDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 33
+        ndk-version: '25.2.9519653'
 
-    - name: Configure Buildozer Project
+    - name: Compile main.c for Android
       run: |
-        ~/.local/bin/buildozer init
-        # Tell buildozer to include your C file and name the app
-        sed -i 's/title = My Application/title = 3D Tic Tac Toe/' buildozer.spec
-        sed -i 's/package.name = myapp/package.name = tictactoe/' buildozer.spec
-        sed -i 's/source.include_exts = py,png,jpg,kv,atlas/source.include_exts = c,h/' buildozer.spec
+        $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang main.c -o tictactoe_android -llog
 
-    - name: Build APK with Buildozer
+    - name: Package into APK
       run: |
-        # This will compile your main.c straight into an Android app package
-        ~/.local/bin/buildozer android debug
-
+        # Create minimal Android app structure
+        mkdir -p app/lib/arm64-v8a
+        cp tictactoe_android app/lib/arm64-v8a/libmain.so
+        cd app
+        zip -r ../3d-tic-tac-toe.apk .
+        
     - name: Upload Finished APK
       uses: actions/upload-artifact@v4
       with:
         name: 3d-tic-tac-toe-apk
-        path: bin/*.apk
+        path: 3d-tic-tac-toe.apk
