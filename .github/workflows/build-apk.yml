@@ -19,25 +19,29 @@ jobs:
         api-level: 33
         ndk-version: '25.2.9519653'
 
-    - name: Prepare SDL2 Headers
+    - name: Prepare Required Headers
       run: |
-        # Download and extract SDL2
+        # Setup SDL2: Download and put in an SDL2 folder
         wget https://github.com/libsdl-org/SDL/releases/download/release-2.30.11/SDL2-2.30.11.tar.gz
         tar -xzf SDL2-2.30.11.tar.gz
-        # Move headers into a folder named 'SDL2' so <SDL2/SDL.h> works
         mkdir -p SDL2
         cp SDL2-2.30.11/include/* SDL2/
+        
+        # Setup Raylib: Download and put in the root directory
+        wget https://github.com/raysan5/raylib/archive/refs/tags/5.0.tar.gz
+        tar -xzf 5.0.tar.gz
+        cp raylib-5.0/src/raylib.h .
 
     - name: Compile main.c for Android
       run: |
-        # -I. tells the compiler to look in the current folder for the 'SDL2' directory
+        # Use -I. to find SDL2/SDL.h and raylib.h in the current directory
         $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang \
           -I. \
           main.c -o tictactoe_android -llog
 
     - name: Package into APK
       run: |
-        # Create standard Android directory structure
+        # Create minimal Android app structure
         mkdir -p app/lib/arm64-v8a
         cp tictactoe_android app/lib/arm64-v8a/libmain.so
         cd app
